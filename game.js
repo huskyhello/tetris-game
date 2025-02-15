@@ -41,6 +41,10 @@ let currentTetris;
 let shadowTetris;
 let saveTetris = {}; // 初始化為空物件
 
+// 追蹤 setTimeout 回傳的計時器 ID
+let gameLoopTimer = null;
+let tetrisFallLoopTimer = null;
+
 // 用於記錄當前遊戲狀態的二維陣列map，其元素字串記錄當格color，初始為backgroundColor
 let gameMap = Array.from({ length: TETRIS_WIDTH}, ()=>Array(TETRIS_HEIGHT).fill(backgroundColor));
 
@@ -208,6 +212,7 @@ document.addEventListener("keydown", (event) =>{
  * 主遊戲迴圈：每隔280毫秒執行一次偵測。
  */
 function gameLoop(){
+    clearTimeout(gameLoopTimer); // 確保舊的計時器不會繼續執行
     if(gameStart && !isPaused)
     {
         // console.log("timeout");
@@ -264,13 +269,14 @@ function gameLoop(){
             gameOver();
         }
     }
-    setTimeout(gameLoop, 280);
+    gameLoopTimer = setTimeout(gameLoop, 280);
 }
 
 /**
  * 自動降落
  */
 function tetrisFallLoop(){
+    clearTimeout(tetrisFallLoopTimer); // 確保舊的計時器不會繼續執行
     if(gameStart && !isPaused)
     {
         let newTetris = {...currentTetris};
@@ -283,7 +289,7 @@ function tetrisFallLoop(){
         // 更新畫面
         updateGameState(gameMap, currentTetris);
     }
-    setTimeout(tetrisFallLoop, 1500 / gameLevel);
+    tetrisFallLoopTimer = setTimeout(tetrisFallLoop, 1500 / gameLevel);
 }
 
 function Init()
