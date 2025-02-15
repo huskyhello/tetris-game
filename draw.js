@@ -147,7 +147,7 @@ export function drawCurShadow(tetris){
 }
 
 // 計分板等資訊欄位
-export function drawInfoAreaCanvas(score, gameLevel) {
+export function drawInfoAreaCanvas(score, gameLevel, lines) {
     ctx.fillStyle = "white";
     ctx.fillRect(INFO_CANVAS_STARTX, INFO_CANVAS_STARTY, INFO_CANVAS_WIDTH, INFO_CANVAS_HEIGHT);
     ctx.strokeStyle = "black"; // 設定邊框顏色
@@ -178,6 +178,6 @@ export function drawInfoAreaCanvas(score, gameLevel) {
     let gameLevelText = `GameLevel: ${gameLevel}`;
     ctx.fillText(gameLevelText, textX, textY + 65);
     // 顯示lines(已消除行)
-    let linesText = `Lines: ${score/10}`;
+    let linesText = `Lines: ${lines}`;
     ctx.fillText(linesText, textX, textY + 90);
 }

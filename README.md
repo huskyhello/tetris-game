@@ -8,6 +8,7 @@ Ctrl: Save/Swap the current Tetris piece
 ←, →: Move the Tetris piece left or right  
 ↓: Move the Tetris piece down slowly  
 Space: Drop the Tetris piece directly to the bottom  
+ESC: Pause/Resume the game  
 *********************************************************  
 Feature:  
 This game is created by a bunny from Taiwan, and the background music is New Jeans👖.  

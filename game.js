@@ -27,10 +27,13 @@ import { MusicManager } from "./class/MusicManager.js";
 // 音效
 const fall = new MusicManager("./assets/sounds/fall.mp3");
 const backgroundMusic = new MusicManager("./assets/sounds/New Jeans.mp3");
+const save = new MusicManager("./assets/sounds/save.mp3")
 
 let score = 0;
-let gameStart = false;
+let lines = 0;
 let gameLevel = 1;
+let isPaused = false
+let gameStart = false;
 let firstKeyDown = true;
 let nextTetris = new Queue();
 const nextTetrisQuan = 3;
@@ -44,13 +47,39 @@ let gameMap = Array.from({ length: TETRIS_WIDTH}, ()=>Array(TETRIS_HEIGHT).fill(
 /**
  * 遊戲結束
  */
-function gameOver()
-{
-    if (confirm("得分: " + score + "\n是否重新開始？")) {
-        score = 0;
-        gameLevel = 1;
-        Init();
-    }
+function gameOver() {
+    gameStart = false;
+    // 先清空gameMap
+    gameMap = Array.from({ length: TETRIS_WIDTH}, ()=>Array(TETRIS_HEIGHT).fill(backgroundColor));
+    showGameOverPopup();
+}
+
+/**
+ * 遊戲結束彈出視窗
+ */
+function showGameOverPopup() {
+    Swal.fire({
+        html: `
+            <img src="/assets/images/endingAlert.gif" 
+                 style="width: 100%; max-width: 300px; border-radius: 10px; margin-top: 10px" />
+            <h2 style="margin-top: 15px; font-size: 24px;">Score: ${score}</h2>
+        </div>
+        `,
+        confirmButtonText: 'Restart',
+        allowOutsideClick: false, // 禁止點擊外部關閉
+        allowEscapeKey: false, // 禁止按 ESC 鍵關閉
+        allowEnterKey: false, // 禁止按 Enter 鍵關閉
+        customClass: {
+            confirmButton: 'swal-confirm-custom'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            score = 0;
+            gameLevel = 1;
+            lines = 0;
+            Init(); // 重新開始遊戲
+        }
+    });
 }
 
 /**
@@ -89,7 +118,19 @@ function saveTheTetris(currentTetris, nextTetris, saveTetris) {
     }
 }
 
+/**
+ * 暫停遊戲畫面
+ */
+function pauseGame() {
+    document.getElementById('pauseWindow').style.display = 'flex';
+}
 
+/**
+ * 恢復遊戲畫面
+ */
+function resumeGame() {
+    document.getElementById('pauseWindow').style.display = 'none';
+}
 
 /**
  * 處理按鍵
@@ -107,31 +148,49 @@ document.addEventListener("keydown", (event) =>{
     // 複製當前Tetris狀態
     let newTetris = {...currentTetris};
 
-    if(event.key === "ArrowLeft") 
+    // 如果isPaused暫停中，僅允許按ESC鍵取消暫停，禁止其他按鍵
+    if(!isPaused)
     {
-        newTetris.x--;
-    }
-    else if(event.key === "ArrowRight")
+        if(event.key === "ArrowLeft") 
         {
-        newTetris.x++;
+            newTetris.x--;
+        }
+        else if(event.key === "ArrowRight")
+            {
+            newTetris.x++;
+        }
+        else if(event.key === "ArrowDown") 
+        {
+            newTetris.y++;
+        }
+        else if(event.key === "ArrowUp") 
+        {
+            newTetris.rotate = (newTetris.rotate+1) % 4;
+        }
+        else if(event.key === " ")
+        {
+            newTetris.x = shadowTetris.x;
+            newTetris.y = shadowTetris.y;
+        }
+        else if(event.key === "Control")
+        {    
+            saveTheTetris(currentTetris, nextTetris, saveTetris); // 將更新currentTetris, nextTetris, saveTetris
+            newTetris = currentTetris;
+            save.start();
+        }
     }
-    else if(event.key === "ArrowDown") 
+    if(event.key === "Escape")
     {
-        newTetris.y++;
-    }
-    else if(event.key === "ArrowUp") 
-    {
-        newTetris.rotate = (newTetris.rotate+1) % 4;
-    }
-    else if(event.key === " ")
-    {
-        newTetris.x = shadowTetris.x;
-        newTetris.y = shadowTetris.y;
-    }
-    else if(event.key === "Control")
-    {    
-        saveTheTetris(currentTetris, nextTetris, saveTetris); // 將更新currentTetris, nextTetris, saveTetris
-        newTetris = currentTetris;
+        console.log("ESC");
+        isPaused = !isPaused;
+        if(isPaused)
+        {
+            pauseGame(); // 顯示暫停畫面
+        }
+        else
+        {
+            resumeGame(); // 隱藏暫停畫面
+        }
     }
 
     // 檢查是否出界 或 重疊別的方塊
@@ -145,65 +204,74 @@ document.addEventListener("keydown", (event) =>{
     drawSaveTetris(saveTetris);
 });
 
-// 每隔250毫秒偵測
-setInterval(() => {
-    if(!gameStart) return;
-    // console.log("timeout");
-    let update = false;
-
-    // 觸底 || 下方撞到地圖已有方塊 --> 放進gameMap中
-    if(hasReachedBottom(currentTetris) || hasReachedOtherBlocksBottom(currentTetris, gameMap))
+/**
+ * 主遊戲迴圈：每隔280毫秒執行一次偵測。
+ */
+function gameLoop(){
+    if(gameStart && !isPaused)
     {
-        update = true;  
-        // 放進gameMap中
-        placeTetrisOnGameMap(gameMap, currentTetris);
-        // 播放音效
-        fall.start();
-    }
+        // console.log("timeout");
+        let update = false;
 
-    // 檢查是否有需要消除的行
-    // --> gameMap中去除這些列，並將上方所有列下移，直到下方已有其他方塊or觸底
-    // --> 加分 
-    let fullLines = checkGameMapLines(gameMap)
-    if(fullLines.length > 0)
-    {
-        update = true;
-        updateGameMap(gameMap, fullLines); // gameMap為傳址，會直接修改值
-        score += fullLines.length * 10;
-        gameLevel = score / 10 / 5; // 每消除5行，增加1個Level
-        backgroundMusic.setRate(1+gameLevel/30); // 設定背景音樂速度
-        fullLines = [];
-        drawInfoAreaCanvas(score, gameLevel); //更新info區的分數等資訊
-    }
+        // 觸底 || 下方撞到地圖已有方塊 --> 放進gameMap中
+        if(hasReachedBottom(currentTetris) || hasReachedOtherBlocksBottom(currentTetris, gameMap))
+        {
+            update = true;  
+            // 放進gameMap中
+            placeTetrisOnGameMap(gameMap, currentTetris);
+            // 播放音效
+            fall.start();
+            // 加分
+            score += 5;
+            drawInfoAreaCanvas(score, gameLevel, lines); //更新info區的分數等資訊
+        }
 
-    if(update)
-    {
-        // 更新畫面
-        currentTetris = nextTetris.dequeue();
-        updateGameState(gameMap, currentTetris);
-        update = false;
-    }
+        // 檢查是否有需要消除的行
+        // --> gameMap中去除這些列，並將上方所有列下移，直到下方已有其他方塊or觸底
+        // --> 加分 
+        let fullLines = checkGameMapLines(gameMap)
+        if(fullLines.length > 0)
+        {
+            update = true;
+            updateGameMap(gameMap, fullLines); // gameMap為傳址，會直接修改值
+            lines += fullLines.length;
+            score += fullLines.length * 10;
+            gameLevel = Math.floor(1+lines / 11); // 每消除11行，增加1個Level
+            backgroundMusic.setRate(1+gameLevel/30); // 設定背景音樂速度
+            fullLines = [];
+            drawInfoAreaCanvas(score, gameLevel, lines); //更新info區的分數等資訊
+        }
 
-    // 檢查是否nextTetris有3個，若沒有就generate，並顯示於wating area
-    if(nextTetris.size() < nextTetrisQuan)
-    {
-        nextTetris.enqueue(genRandomTetris());
-        drawWatingTetris(nextTetris);
-    }
+        if(update)
+        {
+            // 更新畫面
+            currentTetris = nextTetris.dequeue();
+            updateGameState(gameMap, currentTetris);
+            update = false;
+        }
 
-    // 若gameMap中，最上排非background，表示有方塊觸頂
-    // -->GameOver
-    if(someBlocksReachTop(gameMap))
-    {
-        gameOver();
+        // 檢查是否nextTetris有3個，若沒有就generate，並顯示於wating area
+        if(nextTetris.size() < nextTetrisQuan)
+        {
+            nextTetris.enqueue(genRandomTetris());
+            drawWatingTetris(nextTetris);
+        }
+
+        // 若gameMap中，最上排非background，表示有方塊觸頂
+        // -->GameOver
+        if(someBlocksReachTop(gameMap))
+        {
+            gameOver();
+        }
     }
-}, 250);
+    setTimeout(gameLoop, 280);
+}
 
 /**
  * 自動降落
  */
-setInterval(() => {
-    if(gameStart)
+function tetrisFallLoop(){
+    if(gameStart && !isPaused)
     {
         let newTetris = {...currentTetris};
         newTetris.y++;
@@ -215,7 +283,8 @@ setInterval(() => {
         // 更新畫面
         updateGameState(gameMap, currentTetris);
     }
-}, 500 / gameLevel);
+    setTimeout(tetrisFallLoop, 1500 / gameLevel);
+}
 
 function Init()
 {
@@ -224,7 +293,7 @@ function Init()
     drawGameCanvas();
     drawWaitingAreaCanvas();
     drawSaveAreaCanvas();
-    drawInfoAreaCanvas(score, gameLevel);
+    drawInfoAreaCanvas(score, gameLevel, lines);
     updateGameState(gameMap, currentTetris);
 
     backgroundMusic.setLoop();
@@ -232,6 +301,13 @@ function Init()
 
     gameStart = true;
     firstKeyDown = true;
+    isPaused = false;
+
+    // 初始隱藏「暫停畫面」
+    resumeGame();
+
+    gameLoop();
+    tetrisFallLoop();
 }
 
 Init();
