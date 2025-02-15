@@ -60,7 +60,7 @@ function gameOver() {
 function showGameOverPopup() {
     Swal.fire({
         html: `
-            <img src="/assets/images/endingAlert.gif" 
+            <img src="./assets/images/endingAlert.gif" 
                  style="width: 100%; max-width: 300px; border-radius: 10px; margin-top: 10px" />
             <h2 style="margin-top: 15px; font-size: 24px;">Score: ${score}</h2>
         </div>
