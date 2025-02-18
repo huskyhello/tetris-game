@@ -310,9 +310,6 @@ function Init()
     firstKeyDown = true;
     isPaused = false;
 
-    // 初始隱藏「暫停畫面」
-    resumeGame();
-
     gameLoop();
     tetrisFallLoop();
 }
