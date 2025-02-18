@@ -295,6 +295,7 @@ function tetrisFallLoop(){
 function Init()
 {
     gameMap = Array.from({ length: TETRIS_WIDTH}, ()=>Array(TETRIS_HEIGHT).fill(backgroundColor));
+    saveTetris = {};
     currentTetris = genRandomTetris();
     drawGameCanvas();
     drawWaitingAreaCanvas();
